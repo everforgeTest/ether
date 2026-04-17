@@ -4,7 +4,7 @@ const path = require('path');
 const { SharedService } = require('../Services/Common.Services/SharedService');
 const Tables = require('../Constants/Tables');
 const settings = require('../settings.json').settings;
-
+//git
 class DBInitializer {
   static #db = null;
 
