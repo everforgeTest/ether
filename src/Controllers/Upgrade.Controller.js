@@ -1,6 +1,9 @@
 const { UpgradeService } = require('../Services/Common.Services/Upgrade.Service');
 const ContractResponseTypes = require('../Constants/ContractResponseTypes');
 const nacl = require('tweetnacl');
+const { default: DB } = require('../Services/Common.Services/dbHandler');
+const Tables = require('../Constants/Tables');
+const settings = require('../settings.json').settings;
 
 function isMaintainer(userPubKeyHex) {
   const expected = (process.env.MAINTAINER_PUBKEY || '').toLowerCase();
@@ -19,6 +22,8 @@ class UpgradeController {
       switch (this.message.Action) {
         case 'UpgradeContract':
           return await this.#handleUpgrade();
+        case 'GetCurrentVersion':
+          return await this.#getCurrentVersion();
         default:
           return { error: { code: ContractResponseTypes.BAD_REQUEST, message: 'Invalid action.' } };
       }
@@ -50,6 +55,27 @@ class UpgradeController {
     }
 
     return await this.service.upgradeContract();
+  }
+
+  async #getCurrentVersion() {
+    const db = new DB.SqliteDatabase(settings.dbPath);
+    try {
+      db.open();
+      const row = await db.getLastRecord(Tables.CONTRACTVERSION);
+      const version = row ? parseFloat(row.Version) : 1.0;
+      return {
+        success: {
+          version,
+          description: row ? row.Description : null,
+          createdOn: row ? row.CreatedOn : null,
+          lastUpdatedOn: row ? row.LastUpdatedOn : null
+        }
+      };
+    } catch (e) {
+      return { error: { code: ContractResponseTypes.INTERNAL_SERVER_ERROR, message: e.message || 'Failed to get current version.' } };
+    } finally {
+      db.close();
+    }
   }
 }
 
